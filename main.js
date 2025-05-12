@@ -244,7 +244,7 @@ const graphqlEndpoint = 'https://graphql.union.build/v1/graphql';
 const baseExplorerUrl = 'https://sepolia.etherscan.io';
 const unionUrl = 'https://app.union.build/explorer';
 
-const rpcProviders = [new JsonRpcProvider('https://1rpc.io/sepolia')];
+const rpcProviders = [new JsonRpcProvider('https://ethereum-sepolia-rpc.publicnode.com')];
 let currentRpcProviderIndex = 0;
 
 function provider() {
@@ -429,7 +429,10 @@ async function sendFromWallet(walletInfo, maxTransaction) {
     }
 
     if (i < maxTransaction) {
-      await delay(1000);
+      // Add random delay between 10 and 60 seconds
+      const randomDelay = Math.floor(Math.random() * (60000 - 10000 + 1)) + 10000;
+      logger.info(`Waiting ${randomDelay / 1000} seconds before next transaction for ${walletInfo.name || 'Unnamed'}...`);
+      await delay(randomDelay);
     }
     
     updateStatusInfo();
