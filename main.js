@@ -391,7 +391,7 @@ async function sendFromWallet(walletInfo, maxTransaction) {
     // Generate random amount between 0.001 and 0.1 USDC
     const randomAmount = (Math.random() * (0.1 - 0.001) + 0.001).toFixed(6); // 6 decimal precision
     const amountInUnits = Math.floor(randomAmount * 1_000_000); // Convert to USDC units (6 decimals)
-    const amountHex = ethers.hexZeroPad(ethers.toHex(amountInUnits), 32).slice(2); // Convert to 32-byte hex
+    const amountHex = ethers.hexZeroPad(ethers.hexlify(amountInUnits), 32).slice(2); // Convert to 32-byte hex
 
     logger.info(`Using amount: ${randomAmount} USDC (${amountInUnits} units)`);
 
