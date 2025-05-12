@@ -368,20 +368,6 @@ async function checkBalanceAndApprove(wallet, usdcAddress, spenderAddress) {
   return true;
 }
 
-// Fallback function for hexZeroPad if ethers.hexZeroPad is unavailable
-// Manual number-to-hex conversion
-function numberToHex(number) {
-  let hex = number.toString(16);
-  if (hex.length % 2 !== 0) hex = '0' + hex; // Ensure even length
-  return hex; // No '0x' prefix
-}
-
-// Manual hex padding to specified byte length
-function manualHexZeroPad(hex, length) {
-  hex = hex.startsWith('0x') ? hex.slice(2) : hex;
-  return hex.padStart(length * 2, '0');
-}
-
 async function sendFromWallet(walletInfo, maxTransaction) {
   const wallet = new ethers.Wallet(walletInfo.privatekey, provider());
   logger.loading(`Sending from ${wallet.address} (${walletInfo.name || 'Unnamed'})`);
@@ -402,43 +388,11 @@ async function sendFromWallet(walletInfo, maxTransaction) {
     const timestampNow = Math.floor(Date.now() / 1000);
     const salt = ethers.keccak256(ethers.solidityPacked(['address', 'uint256'], [wallet.address, timestampNow]));
 
-    // Generate random amount between 0.001 and 0.1 USDC
-    const randomAmount = (Math.random() * (0.1 - 0.001) + 0.001).toFixed(6); // 6 decimal precision
-    const amountInUnits = Math.floor(randomAmount * 1_000_000); // Convert to USDC units (6 decimals)
-    
-    let amountHex;
-    try {
-      // Step 1: Export amountInUnits as a string (output)
-      const amountString = amountInUnits.toString(); // e.g., "54461"
-      
-      // Step 2: Use string as input for manual hex conversion
-      let hexValue = numberToHex(amountInUnits); // e.g., "d4cd"
-      
-      // Step 3: Pad to 32 bytes
-      amountHex = manualHexZeroPad(hexValue, 32); // e.g., "000...0d4cd"
-      
-      // Optional: Try ethers.hexlify if available, for robustness
-      if (typeof ethers.hexlify === 'function' && typeof ethers.hexZeroPad === 'function') {
-        const ethersHex = ethers.hexZeroPad(ethers.hexlify(BigInt(amountInUnits)), 32).slice(2);
-        if (ethersHex !== amountHex) {
-          logger.warn(`Manual and ethers hex differ: manual=${amountHex}, ethers=${ethersHex}`);
-        }
-      }
-    } catch (err) {
-      logger.error(`Hex conversion failed: ${err.message}`);
-      return;
-    }
-
-    logger.info(`Using amount: ${randomAmount} USDC (${amountInUnits} units)`);
-
-    // Modify operand to include the random amount
     const operand = '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000002c00000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000018000000000000000000000000000000000000000000000000000000000000001c000000000000000000000000000000000000000000000000000000000000027100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000024000000000000000000000000000000000000000000000000000000000000000060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000028000000000000000000000000000000000000000000000000000000000000027100000000000000000000000000000000000000000000000000000000000000014' +
       addressHex +
       '0000000000000000000000000000000000000000000000000000000000000000000000000000000000000014' +
       addressHex +
-      '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000141c7d4b196cb0c7b01d743fbc6116a902379c72380000000000000000000000000000000000000000000000000000000000000000000000000000000000000004555344430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000045553444300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001457978bfe465ad9b1c0bf80f6c1539d300705ea50000000000000000000000000' +
-      amountHex;
-
+      '00000000000000000000000000000000000000000000000000000000000000000000000000000000000000141c7d4b196cb0c7b01d743fbc6116a902379c72380000000000000000000000000000000000000000000000000000000000000000000000000000000000000004555344430000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000045553444300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001457978bfe465ad9b1c0bf80f6c1539d300705ea50000000000000000000000000';
     const instruction = {
       version: 0,
       opcode: 2,
@@ -460,7 +414,7 @@ async function sendFromWallet(walletInfo, maxTransaction) {
       txStats.success++;
       updateCharts();
       
-      logger.success(`${timelog()} | ${walletInfo.name || 'Unnamed'} | Transaction Confirmed: ${explorer.tx(tx.hash)} (${txTime}ms) | Amount: ${randomAmount} USDC`);
+      logger.success(`${timelog()} | ${walletInfo.name || 'Unnamed'} | Transaction Confirmed: ${explorer.tx(tx.hash)} (${txTime}ms)`);
       const txHash = tx.hash.startsWith('0x') ? tx.hash : `0x${tx.hash}`;
       const packetHash = await pollPacketHash(txHash);
       if (packetHash) {
@@ -475,8 +429,8 @@ async function sendFromWallet(walletInfo, maxTransaction) {
     }
 
     if (i < maxTransaction) {
-      // Add random delay between 10 and 60 seconds
-      const randomDelay = Math.floor(Math.random() * (60000 - 10000 + 1)) + 10000;
+      // Add random delay between 10 and 30 seconds
+      const randomDelay = Math.floor(Math.random() * (30000 - 10000 + 1)) + 10000;
       logger.info(`Waiting ${randomDelay / 1000} seconds before next transaction...`);
       await delay(randomDelay);
     }
