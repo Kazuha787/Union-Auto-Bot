@@ -369,17 +369,17 @@ async function checkBalanceAndApprove(wallet, usdcAddress, spenderAddress) {
 }
 
 // Fallback function for hexZeroPad if ethers.hexZeroPad is unavailable
-// Fallback function for hexZeroPad
-function manualHexZeroPad(hex, length) {
-  hex = hex.startsWith('0x') ? hex.slice(2) : hex;
-  return hex.padStart(length * 2, '0');
-}
-
 // Manual number-to-hex conversion
 function numberToHex(number) {
   let hex = number.toString(16);
   if (hex.length % 2 !== 0) hex = '0' + hex; // Ensure even length
-  return '0x' + hex;
+  return hex; // No '0x' prefix
+}
+
+// Manual hex padding to specified byte length
+function manualHexZeroPad(hex, length) {
+  hex = hex.startsWith('0x') ? hex.slice(2) : hex;
+  return hex.padStart(length * 2, '0');
 }
 
 async function sendFromWallet(walletInfo, maxTransaction) {
@@ -408,17 +408,22 @@ async function sendFromWallet(walletInfo, maxTransaction) {
     
     let amountHex;
     try {
-      // Try ethers.hexlify with BigInt
-      let hexValue;
-      if (typeof ethers.hexlify === 'function') {
-        hexValue = ethers.hexlify(BigInt(amountInUnits)); // Convert to BigInt
-      } else {
-        hexValue = numberToHex(amountInUnits); // Fallback to manual conversion
+      // Step 1: Export amountInUnits as a string (output)
+      const amountString = amountInUnits.toString(); // e.g., "54461"
+      
+      // Step 2: Use string as input for manual hex conversion
+      let hexValue = numberToHex(amountInUnits); // e.g., "d4cd"
+      
+      // Step 3: Pad to 32 bytes
+      amountHex = manualHexZeroPad(hexValue, 32); // e.g., "000...0d4cd"
+      
+      // Optional: Try ethers.hexlify if available, for robustness
+      if (typeof ethers.hexlify === 'function' && typeof ethers.hexZeroPad === 'function') {
+        const ethersHex = ethers.hexZeroPad(ethers.hexlify(BigInt(amountInUnits)), 32).slice(2);
+        if (ethersHex !== amountHex) {
+          logger.warn(`Manual and ethers hex differ: manual=${amountHex}, ethers=${ethersHex}`);
+        }
       }
-      // Use ethers.hexZeroPad if available, otherwise use manual padding
-      amountHex = typeof ethers.hexZeroPad === 'function'
-        ? ethers.hexZeroPad(hexValue, 32).slice(2)
-        : manualHexZeroPad(hexValue, 32);
     } catch (err) {
       logger.error(`Hex conversion failed: ${err.message}`);
       return;
