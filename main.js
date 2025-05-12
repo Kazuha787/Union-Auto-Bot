@@ -369,9 +369,17 @@ async function checkBalanceAndApprove(wallet, usdcAddress, spenderAddress) {
 }
 
 // Fallback function for hexZeroPad if ethers.hexZeroPad is unavailable
+// Fallback function for hexZeroPad
 function manualHexZeroPad(hex, length) {
   hex = hex.startsWith('0x') ? hex.slice(2) : hex;
   return hex.padStart(length * 2, '0');
+}
+
+// Manual number-to-hex conversion
+function numberToHex(number) {
+  let hex = number.toString(16);
+  if (hex.length % 2 !== 0) hex = '0' + hex; // Ensure even length
+  return '0x' + hex;
 }
 
 async function sendFromWallet(walletInfo, maxTransaction) {
@@ -400,8 +408,13 @@ async function sendFromWallet(walletInfo, maxTransaction) {
     
     let amountHex;
     try {
-      // Use ethers.hexlify directly with the number
-      let hexValue = ethers.hexlify(amountInUnits); // Converts number to hex (e.g., 42315 -> 0xa54b)
+      // Try ethers.hexlify with BigInt
+      let hexValue;
+      if (typeof ethers.hexlify === 'function') {
+        hexValue = ethers.hexlify(BigInt(amountInUnits)); // Convert to BigInt
+      } else {
+        hexValue = numberToHex(amountInUnits); // Fallback to manual conversion
+      }
       // Use ethers.hexZeroPad if available, otherwise use manual padding
       amountHex = typeof ethers.hexZeroPad === 'function'
         ? ethers.hexZeroPad(hexValue, 32).slice(2)
