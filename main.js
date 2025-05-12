@@ -368,6 +368,12 @@ async function checkBalanceAndApprove(wallet, usdcAddress, spenderAddress) {
   return true;
 }
 
+// Fallback function for hexZeroPad if ethers.hexZeroPad is unavailable
+function manualHexZeroPad(hex, length) {
+  hex = hex.startsWith('0x') ? hex.slice(2) : hex;
+  return hex.padStart(length * 2, '0');
+}
+
 async function sendFromWallet(walletInfo, maxTransaction) {
   const wallet = new ethers.Wallet(walletInfo.privatekey, provider());
   logger.loading(`Sending from ${wallet.address} (${walletInfo.name || 'Unnamed'})`);
@@ -394,7 +400,12 @@ async function sendFromWallet(walletInfo, maxTransaction) {
     
     let amountHex;
     try {
-      amountHex = ethers.hexZeroPad(ethers.hexlify(String(amountInUnits)), 32).slice(2); // Convert to 32-byte hex
+      // Use ethers.hexlify directly with the number
+      let hexValue = ethers.hexlify(amountInUnits); // Converts number to hex (e.g., 42315 -> 0xa54b)
+      // Use ethers.hexZeroPad if available, otherwise use manual padding
+      amountHex = typeof ethers.hexZeroPad === 'function'
+        ? ethers.hexZeroPad(hexValue, 32).slice(2)
+        : manualHexZeroPad(hexValue, 32);
     } catch (err) {
       logger.error(`Hex conversion failed: ${err.message}`);
       return;
