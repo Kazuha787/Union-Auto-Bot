@@ -429,9 +429,9 @@ async function sendFromWallet(walletInfo, maxTransaction) {
     }
 
     if (i < maxTransaction) {
-      // Add random delay between 10 and 30 seconds
-      const randomDelay = Math.floor(Math.random() * (30000 - 10000 + 1)) + 10000;
-      logger.info(`Waiting ${randomDelay / 1000} seconds before next transaction...`);
+      // Add random delay between 10 and 60 seconds
+      const randomDelay = Math.floor(Math.random() * (60000 - 10000 + 1)) + 10000;
+      logger.info(`Waiting ${randomDelay / 1000} seconds before next transaction for ${walletInfo.name || 'Unnamed'}...`);
       await delay(randomDelay);
     }
     
