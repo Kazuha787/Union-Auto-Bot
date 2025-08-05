@@ -1,292 +1,248 @@
+# Union Auto Bot
 
+🚀 **Union Auto Bot** is a Python-based automation tool designed to streamline token bridge transactions across multiple testnet networks, including Sepolia, Holesky, Sei, Bitcorn, Xion, and Babylon. With a sleek terminal-based UI powered by the `rich` library, it supports multi-wallet operations, real-time transaction tracking, and secure cross-chain transfers. Perfect for developers, testers, and blockchain enthusiasts looking to automate repetitive tasks on the Union Testnet! 🌉
 
-![IMG_20250709_232943_431](https://github.com/user-attachments/assets/815be46d-3640-46f7-b42f-957007a711bf)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.8+](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
 
+## Features
 
+- **Multi-Network Support**: Automate token transfers between Sepolia, Holesky, Sei, Bitcorn, Xion, and Babylon testnets.
+- **Multi-Wallet Compatibility**: Process transactions using multiple private keys and corresponding Xion/Babylon addresses.
+- **Dynamic Gas Estimation**: Automatically calculates gas fees for reliable transaction execution.
+- **Real-Time Dashboard**: Terminal-based UI with colorful logs for transaction status, balances, and explorer links.
+- **Error Handling**: Robust retry logic and detailed error logging for failed transactions.
+- **Configurable Settings**: Customize transaction amounts, delays, and RPC endpoints via class attributes.
+- **Cross-Chain Automation**: Supports 12 transfer pairs, including an "Auto All God Mode" for running all pairs sequentially.
+- **Secure**: Uses environment variables for sensitive data like private keys.
 
+## Prerequisites
 
+Before using Union Auto Bot, ensure you have:
 
+- **Python 3.8+**: Install from [python.org](https://www.python.org/downloads/).
+- **Git**: Installed for cloning the repository.
+- **Testnet Funds**: Sufficient testnet tokens (ETH, SEI, BTCN) on supported networks.
+- **Xion & Babylon Addresses**: Corresponding addresses for cross-chain transfers.
+- A modern terminal (e.g., VS Code, iTerm2, Windows Terminal) for optimal UI rendering.
 
+## Installation
 
-# 🚀 Union V3.5 Comple 150 Stars And 50 Forks I will Drop Asap 🌌
-
-**Union Auto Bot** is a cutting-edge Node.js automation tool crafted for seamless cross-chain token transfers on testnet networks like SEI, XION, Babylon, Corn, Sepolia, and Holesky. With a sleek command-line interface (CLI) and robust functionality, it empowers users to execute token swaps effortlessly using the Union protocol. Whether you're a developer testing interoperability or a blockchain enthusiast exploring testnets, this bot is your ultimate companion! 🛠️
-
-> ⚠️ **Important**: This tool is for **testnet use only**. Ensure you have testnet tokens for gas and transfers. Use responsibly!
-
----
-
-## ✨ Key Features
-
-- **Cross-Chain Magic** 🌍: Transfer tokens between SEI, XION, Babylon, and destinations like Corn, Sepolia, and Holesky.
-- **Interactive CLI** 🖥️: Navigate a vibrant menu with arrow keys and Enter to select options.
-- **Flexible Token Support** 💰: Swap native tokens (SEI, XION, BBN) or stablecoins (USDC).
-- **Customizable Transfers** ⚙️: Set transfer amounts, transaction counts, and delays with ease.
-- **Real-Time Feedback** 📊: Enjoy a loading spinner, color-coded outputs, and transaction summaries.
-- **Error Resilience** 🛡️: Handles wallet misconfigurations, insufficient balances, and network hiccups gracefully.
-- **Transaction Insights** 🔍: View transaction hashes, packet hashes, and block explorer links for transparency.
-- **Wallet Integration** 🔐: Supports EVM (SEI) and Cosmos (XION, Babylon) wallets for secure operations.
-
----
-
-## 🌐 Supported Networks & Destinations
-
-| Network       | Chain ID         | RPC Endpoint                              | Denom  | Gas Price       |
-|---------------|------------------|-------------------------------------------|--------|-----------------|
-| SEI Testnet   | 1328             | `https://evm-rpc-testnet.sei-apis.com`    | SEI    | Dynamic         |
-| XION Testnet  | `xion-testnet-2` | `https://rpc.xion-testnet-2.burnt.com/`   | uxion  | 0.025uxion      |
-| Babylon Testnet | `bbn-test-3`   | `https://babylon-testnet-rpc.nodes.guru`  | ubbn   | 0.0025ubbn      |
-
-### 🎯 Transfer Destinations
-- **Corn** 🍿: Channel ID 3, Token Address: `e53dcec07d16d88e386ae0710e86d9a400f83c31`
-- **Sepolia** 🧪: Channel ID 1, Token Address: `bd030914ab8d7ab1bd626f09e47c7cc2881550a3`
-- **Holesky** 🕳️: Channel ID 2, Token Address: `77b99a27a5fed3bc8fb3e2f1063181f82ec48637`
-
----
-
-## 🛠️ Prerequisites
-
-Before diving in, ensure you have:
-
-- **Node.js** (v16+): [Download here](https://nodejs.org/) 📦
-- **npm**: Comes with Node.js
-- **Testnet Wallets**: Private keys for SEI, XION, and Babylon with testnet funds
-- **Testnet Tokens**: Grab tokens from testnet faucets for gas and transfers 💧
-- **Git**: For cloning the repository [Install Git](https://git-scm.com/)
-
----
-
-## 📥 Installation
-
-1. **Clone the Repository** 🐙:
+1. **Clone the Repository**:
    ```bash
    git clone https://github.com/Kazuha787/Union-Auto-Bot.git
    cd Union-Auto-Bot
    ```
 
-2. **Install Dependencies** 📚:
+2. **Install Dependencies**:
+   Install required Python packages using `pip`:
    ```bash
-   npm install
+   pip install web3 eth-utils eth-abi eth-account aiohttp python-dotenv rich
    ```
 
-   Key dependencies include:
-   - `ethers`: Ethereum-compatible transactions
-   - `@cosmjs/proto-signing`, `@cosmjs/stargate`: Cosmos SDK support
-   - `axios`: GraphQL queries for packet hashes
-   - `viem`: Hex conversions
-   - `crypto`: Random salt generation
-   - `readline`: CLI input handling
+3. **Set Up Environment Variables**:
+   Create a `.env` file in the project root and add your private key and addresses:
+   ```env
+   PRIVATE_KEY=your_private_key_here
+   XION_ADDRESS=your_xion_address_here
+   BABYLON_ADDRESS=your_babylon_address_here
+   ```
+   > **Note**: Never expose your private keys publicly. Ensure the `.env` file is added to `.gitignore`.
 
-3. **Configure Wallets** 🔑:
-   - Create a `wallet.json` file in the project root:
-     ```json
-     {
-       "wallets": [
-         {
-           "sei_privatekey": "0xYourSeiPrivateKey",
-           "xion_privatekey": "0xYourXionPrivateKey",
-           "babylon_privatekey": "0xYourBabylonPrivateKey",
-           "babylon_address": "bbnYourBabylonAddress"
-         }
-       ]
-     }
-     ```
-   - **Pro Tip**: Use testnet private keys only and ensure sufficient funds.
+4. **Verify Configuration**:
+   Ensure the `.env` file is correctly formatted and contains valid EVM private keys and corresponding Xion/Babylon addresses.
 
-4. **Union Instruction Builder** 🧩:
-   - The bot requires `union-instruction-builder.js` for token configs and messages. If missing, a placeholder is used. For custom logic, add `union-instruction-builder.js` with:
-     - `getTokenConfig(type)`: Returns token details (e.g., USDC, XION)
-     - `createSendMessage(params)`: Builds Cosmos transfer messages
+## Usage
 
----
-
-## 🚀 Usage
-
-1. **Launch the Bot**:
+1. **Run the Bot**:
+   Start the bot by executing:
    ```bash
-   node main.js
+   python main.py
    ```
 
-2. **Navigate the Menu** 🎮:
-   - Use **Up** ⬆️ and **Down** ⬇️ arrow keys to highlight options.
-   - Press **Enter** ⏎ to select.
-   - Menu options:
-     - 🌉 **SEI to XION SWAP**
-     - 🌽 **SEI to CORN SWAP**
-     - 🏛️ **XION to Babylon SWAP**
-     - 🌐 **Babylon to Others SWAPS**
-     - 🚪 **Exit**
+2. **Select Transfer Option**:
+   The bot will display an interactive menu with 13 options:
+   ```
+   ╔════════════════════════════════════╗
+   ║      Select Transfer Option        ║
+   ╚════════════════════════════════════╝
+   1. Sepolia Testnet to Holesky Testnet
+   2. Sepolia Testnet to Babylon Testnet
+   3. Holesky Testnet to Sepolia Testnet
+   4. Holesky Testnet to Xion Testnet
+   5. Holesky Testnet to Babylon Testnet
+   6. Sei Testnet to Xion Testnet
+   7. Sei Testnet to Bitcorn Testnet
+   8. Sei Testnet to Binance Smart Chain Testnet
+   9. Sei Testnet to Babylon Testnet
+   10. Bitcorn Testnet to Xion Testnet
+   11. Bitcorn Testnet to Sei Testnet
+   12. Bitcorn Testnet to Babylon Testnet
+   13. Auto All God Mod
+   ══════════════════════════════════════
+   Choose -> 
+   ```
+   Enter a number (1–13) to select a transfer pair or the "Auto All God Mode" to run all pairs.
 
-3. **Configure Transfers** 🛠️:
-   - **SEI to XION/CORN**:
-     - Amount: Enter SEI amount (default: 0.0001 SEI)
-     - Count: Number of transfers (default: 1)
-   - **XION to Babylon**:
-     - Token: Choose USDC or XION
-     - Amount: Token amount (e.g., 0.01)
-     - Count: Number of transfers (default: 1)
-   - **Babylon to Others**:
-     - Destination: Select Corn, Sepolia, or Holesky
-     - Amount: BBN amount (e.g., 0.001)
-     - Count: Number of transfers (default: 1)
-     - Delay: Seconds between transactions (default: 0)
+3. **Specify Transaction Count**:
+   Enter the number of transactions to perform for the selected pair:
+   ```
+   How Many Times Do You Want To Make a Transfer? -> 
+   ```
 
-4. **Track Progress** 📡:
-   - Watch the CLI for:
-     - Transaction hashes with block explorer links (e.g., [seitrace.com](https://seitrace.com))
-     - Packet hashes (polled via GraphQL)
-     - Color-coded status: 🟢 Success, 🔴 Failure
-   - A detailed summary shows successful/failed transfers and hashes.
+4. **Monitor Progress**:
+   The bot will display real-time logs with balance checks, transaction details, and explorer links for each transfer. Successful transactions will show block numbers and Union explorer links.
 
-5. **Exit Gracefully**:
-   - Select **Exit** or press **Ctrl+C** to stop the bot. 🛑
+## File Structure
 
----
-
-## ⚙️ Advanced Configuration
-
-### Network Settings
-Modify network configurations in the script if needed:
-- **XION Testnet**:
-  ```javascript
-  const XION_TESTNET = {
-    chainId: "xion-testnet-2",
-    rpcEndpoint: "https://rpc.xion-testnet-2.burnt.com/",
-    prefix: "xion",
-    denom: "uxion",
-    gasPrice: GasPrice.fromString("0.025uxion")
-  };
-  ```
-- **Babylon Testnet**:
-  ```javascript
-  const BABYLON_TESTNET = {
-    chainId: "bbn-test-3",
-    rpcEndpoint: "https://babylon-testnet-rpc.nodes.guru",
-    prefix: "bbn",
-    denom: "ubbn",
-    gasPrice: GasPrice.fromString("0.0025ubbn")
-  };
-  ```
-- **SEI Testnet**:
-  ```javascript
-  const provider = new ethers.JsonRpcProvider("https://evm-rpc-testnet.sei-apis.com");
-  ```
-
-### Customizing Destinations
-Update `DESTINATIONS` to add or modify transfer destinations:
-```javascript
-const DESTINATIONS = {
-  corn: { name: "Corn", channelId: 3, tokenAddress: "e53dcec07d16d88e386ae0710e86d9a400f83c31" },
-  sepolia: { name: "Sepolia", channelId: 1, tokenAddress: "bd030914ab8d7ab1bd626f09e47c7cc2881550a3" },
-  holesky: { name: "Holesky", channelId: 2, tokenAddress: "77b99a27a5fed3bc8fb3e2f1063181f82ec48637" }
-};
+```
+Union-Auto-Bot/
+├── main.py              # Entry point for running the bot
+├── union.py             # Core logic for transaction processing and cross-chain transfers
+├── ui.py                # Terminal UI utilities using the rich library
+├── utils.py             # Helper functions for encoding and formatting data
+├── .env.example         # Example environment file for configuration
+├── .gitignore           # Git ignore rules for sensitive files
+├── README.md            # Project documentation (this file)
+└── requirements.txt     # List of Python dependencies
 ```
 
-### Gas and Fees
-- **SEI**: Dynamic gas pricing using `provider.getFeeData()`.
-- **XION**: Fixed gas of 696861 and 697 uxion per transfer.
-- **Babylon**: Fixed gas of 500000 and 1000 ubbn per transfer.
+### File Descriptions
 
----
+- **`main.py`**: Initializes the bot, loads environment variables, and orchestrates the transfer process.
+- **`union.py`**: Contains the `Union` class with methods for transaction execution, balance checks, and cross-chain instruction generation.
+- **`ui.py`**: Provides logging functions (`logger_info`, `logger_success`, etc.) for a colorful terminal interface.
+- **`utils.py`**: Utility functions for hex padding and data encoding used in transaction construction.
+- **`.env.example`**: Template for the `.env` file to store private keys and addresses.
+- **`.gitignore`**: Excludes sensitive files (e.g., `.env`, `*.pyc`) from version control.
+- **`requirements.txt`**: Lists required Python packages for easy installation.
 
-## 🛡️ Error Handling
+## Configuration
 
-The bot is built to handle errors gracefully:
-- **Wallet Errors** 🚫: Validates private keys and addresses in `wallet.json`.
-- **Balance Checks** 💸: Ensures sufficient tokens and gas before transfers.
-- **Network Failures** 🌐: Retries packet hash queries (50 attempts, 5s delay).
-- **User Input** ⌨️: Validates amounts, counts, and delays with clear error messages.
-- **Transaction Failures** 🔴: Logs detailed errors and continues with remaining transfers.
+### Environment Variables
+The `.env` file must include:
+- `PRIVATE_KEY`: Your EVM-compatible private key (e.g., for Sepolia, Holesky, etc.).
+- `XION_ADDRESS`: Your Xion Testnet address (e.g., `xion1...`).
+- `BABYLON_ADDRESS`: Your Babylon Testnet address (e.g., `bbn1...`).
 
-Errors are displayed in red with prompts to continue, ensuring a smooth experience.
+Example `.env`:
+```env
+PRIVATE_KEY=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+XION_ADDRESS=xion1exampleaddresshere
+BABYLON_ADDRESS=bbn1exampleaddresshere
+```
 
----
+### Transaction Amounts
+Default transaction amounts are set in `union.py` and can be modified:
+```python
+self.sepolia_amount = 0.0001  # ETH for Sepolia transfers
+self.holesky_amount = 0.0001  # ETH for Holesky transfers
+self.sei_amount = 0.01        # SEI for Sei transfers
+self.corn_amount = 0.0000001  # BTCN for Bitcorn transfers
+```
 
-## 🧑‍💻 Contributing
+### Delay Between Transactions
+Adjust the delay between transactions (in seconds) in `union.py`:
+```python
+self.min_delay = 1  # Minimum delay
+self.max_delay = 1  # Maximum delay
+```
 
-We love contributions! Here's how to get started:
+### RPC Endpoints
+The bot uses the following RPC URLs, which can be updated in `union.py` if needed:
+```python
+self.SEPOLIA_RPC_URL = "https://sepolia.drpc.org/"
+self.HOLESKY_RPC_URL = "https://ethereum-holesky-rpc.publicnode.com/"
+self.SEI_RPC_URL = "https://evm-rpc-testnet.sei-apis.com/"
+self.CORN_RPC_URL = "https://21000001.rpc.thirdweb.com/"
+```
 
-1. **Fork the Repo** 🍴: [https://github.com/Kazuha787/Union-Auto-Bot](https://github.com/Kazuha787/Union-Auto-Bot)
-2. **Create a Branch** 🌿:
+## Troubleshooting
+
+- **Error: `'SignedTransaction' object has no attribute 'raw_transaction'`**:
+  - Ensure you’re using `web3.py` version 6.0.0 or higher:
+    ```bash
+    pip install --upgrade web3
+    ```
+  - The bot uses `rawTransaction` (correct for `web3.py` v6+). If using an older version, downgrade to `web3==5.31.4` or update the code to use `raw_transaction`.
+
+- **Error: Insufficient Funds**:
+  - Verify you have enough testnet tokens for the transaction amount and gas fees.
+  - Obtain testnet tokens from faucets for Sepolia, Holesky, Sei, or Bitcorn.
+
+- **Error: Invalid RPC**:
+  - Check the RPC URLs in `union.py`. Replace with alternative endpoints if needed (e.g., Alchemy, Infura).
+  - Ensure your internet connection is stable.
+
+- **Error: Invalid Private Key or Address**:
+  - Double-check the `.env` file for correct formatting and valid EVM private key, Xion, and Babylon addresses.
+
+- **Transaction Fails or Reverts**:
+  - Verify the `UCS03_ROUTER_ADDRESS` and contract ABI in `union.py`.
+  - Check the Union Testnet documentation for any updates to contract addresses or parameters.
+
+- **Need Help?**:
+  - Join the official Union Testnet community (e.g., Discord or Telegram) for support.
+  - Open an issue on this repository with detailed logs.
+
+## Contributing
+
+Contributions are welcome! 🎉 To contribute:
+
+1. Fork the repository.
+2. Create a new branch:
    ```bash
-   git checkout -b feature/your-awesome-feature
+   git checkout -b feature/your-feature
    ```
-3. **Make Changes** ✍️: Add features, fix bugs, or improve docs.
-4. **Commit** 📝:
+3. Make your changes and commit:
    ```bash
-   git commit -m "Add your awesome feature"
+   git commit -m "Add your feature"
    ```
-5. **Push** 🚀:
+4. Push to your branch:
    ```bash
-   git push origin feature/your-awesome-feature
+   git push origin feature/your-feature
    ```
-6. **Submit a Pull Request** 📬: Include a clear description of your changes.
+5. Open a Pull Request with a clear description of your changes.
 
-**Contribution Ideas**:
-- Add support for new testnet networks 🌐
-- Enhance the CLI with progress bars or ASCII art 🎨
-- Implement batch transaction optimization ⚡
-- Improve error logging with file outputs 📄
+Please ensure your code follows PEP 8 style guidelines and includes appropriate comments.
 
----
+## License
 
-## 🌟 Community & Support
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-Join our vibrant community for help and updates:
-- **Telegram** 📩: [t.me/Offical_Im_kazuha](https://t.me/Offical_Im_kazuha)
-- **GitHub Issues** 🐞: Report bugs or suggest features [here](https://github.com/Kazuha787/Union-Auto-Bot/issues)
-- **Discussions** 💬: Share ideas in the [GitHub Discussions](https://github.com/Kazuha787/Union-Auto-Bot/discussions)
+## Disclaimer
+
+This bot is for **educational purposes only** and should be used on testnet networks. The developers are not responsible for any financial losses, account suspensions, or other consequences resulting from the use of this bot. Always audit the code and use it at your own risk.
 
 ---
 
-## 📜 License
+## Support
 
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details. 📄
-
----
-
-## ⚠️ Disclaimer
-
-**Union Auto Bot** is for **testnet environments only**. Using it on mainnet may lead to loss of funds. The author is not liable for any misuse or unintended consequences. Always verify wallet configurations and test thoroughly. 🛑
+If you find this project helpful, give it a ⭐ on GitHub! For questions, issues, or feature requests, contact me via [GitHub Issues](https://github.com/Kazuha787/Union-Auto-Bot/issues) or join the community on [Telegram: @Offical_Im_kazuha](https://t.me/Offical_Im_kazuha).[](https://github.com/Kazuha787)
 
 ---
 
-## 🙌 Acknowledgments
+### Notes for You
+- **File Structure**: The file structure in the README reflects the provided code (`main.py`, `union.py`, `ui.py`, `utils.py`) and includes standard files like `.env.example` and `requirements.txt` for clarity. If your repository has additional files, let me know, and I can update the structure.
+- **Customization**: The README is tailored to your GitHub profile (Kazuha787) and includes a Telegram link based on your other projects (e.g., Pharos-Auto-Bot). Update the Telegram handle if it’s incorrect.
+- **Visual Appeal**: Added badges, emojis, and clear sections to make the README professional and engaging.
+- **Troubleshooting**: Included a fix for the `raw_transaction` error you encountered, ensuring compatibility with `web3.py` v6+.
+- **Assumptions**: Assumed the presence of `.env.example` and `requirements.txt`. If these don’t exist, you can create them:
+  - `requirements.txt`:
+    ```text
+    web3>=6.0.0
+    eth-utils
+    eth-abi
+    eth-account
+    aiohttp
+    python-dotenv
+    rich
+    ```
+  - `.env.example`:
+    ```env
+    PRIVATE_KEY=
+    XION_ADDRESS=
+    BABYLON_ADDRESS=
+    ```
 
-- **Union Protocol**: For enabling cross-chain interoperability
-- **Cosmos SDK & Ethers.js**: For robust blockchain interactions
-- **Community**: For feedback and support on Telegram
-
----
-
-**Built with 💖 by Kazuha**  
-📍 [GitHub](https://github.com/Kazuha787) | 📩 [Telegram](https://t.me/Offical_Im_kazuha)
-
-> Let's conquer the testnet together! 🚀
-
----
-
-### Enhancements in This README
-
-1. **Visual Appeal**:
-   - Added emojis (🚀, 🌌, 🛠️, etc.) for engagement.
-   - Used modern Markdown formatting with tables, badges, and callouts.
-   - Color-coded CLI feedback mirrored in documentation (🟢, 🔴).
-
-2. **Advanced Sections**:
-   - Added **Supported Networks & Destinations** with a table.
-   - Included **Advanced Configuration** for developers.
-   - Expanded **Contributing** with specific ideas.
-   - Added **Acknowledgments** for a professional touch.
-
-3. **User-Friendly**:
-   - Clear installation steps with code blocks and links.
-   - Detailed usage instructions with menu navigation.
-   - Comprehensive error handling section.
-
-4. **Professional Tone**:
-   - Maintained a balance between technical accuracy and accessibility.
-   - Included a disclaimer for legal clarity.
-   - Linked to community resources for support.
-
-To use this README, create a `README.md` file in your repository and paste the content above. If you need a `LICENSE` file or further customization (e.g., badges for build status, npm version), let me know! 😊
+If you need further refinements, additional sections, or specific changes, let me know!
