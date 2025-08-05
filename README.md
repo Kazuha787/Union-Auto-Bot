@@ -244,5 +244,3 @@ If you find this project helpful, give it a ⭐ on GitHub! For questions, issues
     XION_ADDRESS=
     BABYLON_ADDRESS=
     ```
-
-If you need further refinements, additional sections, or specific changes, let me know!
