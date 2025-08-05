@@ -1,0 +1,7 @@
+web3>=6.0.0
+eth-utils
+eth-abi
+eth-account
+aiohttp
+python-dotenv
+rich
