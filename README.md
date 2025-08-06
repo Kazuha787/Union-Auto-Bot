@@ -31,7 +31,7 @@ Before using Union Auto Bot, ensure you have:
 1. **Clone the Repository**:
    ```bash
    git clone https://github.com/CryptoExplor/Union-Auto.git
-   cd Union-Auto-Bot
+   cd Union-Auto
    ```
 
 2. **Install Dependencies**:
