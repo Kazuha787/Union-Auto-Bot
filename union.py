@@ -19,7 +19,7 @@ class Union:
         load_dotenv() 
 
         self.GRAPHQL_API = "https://graphql.union.build/v1/graphql"
-        self.SEPOLIA_RPC_URL = "https://sepolia.drpc.org/"
+        self.SEPOLIA_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
         self.HOLESKY_RPC_URL = "https://ethereum-holesky-rpc.publicnode.com/"
         self.SEI_RPC_URL = "https://evm-rpc-testnet.sei-apis.com/"
         self.CORN_RPC_URL = "https://21000001.rpc.thirdweb.com/"
