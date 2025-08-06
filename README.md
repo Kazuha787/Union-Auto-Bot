@@ -30,7 +30,7 @@ Before using Union Auto Bot, ensure you have:
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/Kazuha787/Union-Auto-Bot.git
+   git clone https://github.com/CryptoExplor/Union-Auto-Bot.git
    cd Union-Auto-Bot
    ```
 
