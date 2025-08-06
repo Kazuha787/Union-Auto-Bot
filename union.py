@@ -3,6 +3,7 @@ import json
 import time
 import random
 from web3 import Web3
+from eth_account import Account
 from eth_utils import keccak
 from eth_abi.abi import encode
 from aiohttp import ClientSession, ClientTimeout
@@ -600,28 +601,49 @@ class Union:
             instruction = self.generate_instruction_data(address, amount, pair)
             token_contract = web3.eth.contract(address=web3.to_checksum_address(self.UCS03_ROUTER_ADDRESS), abi=self.UCS03_CONTRACT_ABI)
             send_data = token_contract.functions.send(channel_id, timeout_height, timeout_timestamp, salt, instruction)
-            estimated_gas = send_data.estimate_gas({"from": address, "value": amount})
+
+            # Get latest block to calculate baseFeePerGas
             latest_block = web3.eth.get_block("latest")
             base_fee = latest_block.get("baseFeePerGas", 0)
+            
+            # Calculate maxPriorityFeePerGas and maxFeePerGas
             max_priority_fee = web3.to_wei(fee, "gwei")
+            # Ensure max_fee is at least base_fee + max_priority_fee
             max_fee = base_fee + max_priority_fee
+
+            # Estimate gas before building transaction
+            estimated_gas = send_data.estimate_gas({"from": address, "value": amount})
+            
             send_tx = send_data.build_transaction({
                 "from": address,
                 "value": amount,
-                "gas": int(estimated_gas * 1.2),
+                "gas": int(estimated_gas * 1.2), # Add a buffer to estimated gas
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
                 "nonce": web3.eth.get_transaction_count(address, "pending"),
                 "chainId": web3.eth.chain_id,
             })
-            signed_tx = web3.eth.account.sign_transaction(send_tx, private_key)
-            raw_tx = web3.eth.send_raw_transaction(signed_tx.rawTransaction)  # Updated to rawTransaction
-            tx_hash = web3.to_hex(raw_tx)
-            receipt = await asyncio.to_thread(web3.eth.wait_for_transaction_receipt, tx_hash, timeout=600)
+            
+            # Correct way to sign and send the transaction
+            signed_tx = Account.sign_transaction(send_tx, private_key)
+            raw_tx_bytes = signed_tx.raw_transaction
+            
+            logger_info(f"Sending raw transaction...")
+            tx_hash_bytes = web3.eth.send_raw_transaction(raw_tx_bytes)
+            tx_hash_hex = web3.to_hex(tx_hash_bytes) # Convert to hex for logging and wait_for_transaction_receipt
+            logger_success(f"Transaction sent with hash: {tx_hash_hex}")
+            
+            logger_info(f"Waiting for transaction receipt for {tx_hash_hex}...")
+            receipt = await asyncio.to_thread(web3.eth.wait_for_transaction_receipt, tx_hash_hex, timeout=600)
+            logger_success(f"Transaction confirmed in block {receipt.blockNumber}")
+            
             block_number = receipt.blockNumber
-            return tx_hash, block_number
+            return tx_hash_hex, block_number # Return the hex string
         except Exception as e:
             logger_error(f"Perform Send Failed: {str(e)}")
+            # Log the full traceback for more detailed debugging
+            import traceback
+            logger_error(f"Detailed error: {traceback.format_exc()}")
             return None, None
 
     async def print_timer(self):
@@ -978,8 +1000,13 @@ class Union:
 
     async def process_accounts(self, private_key: str, address: str, option: int):
         logger_info(f"Address: {address} [EVM]")
-        logger_info(f"Address: {self.xion_address[address]} [XION]")
-        logger_info(f"Address: {self.babylon_address[address]} [BABYLON]")
+        # Safely access xion_address, providing a default message if not found
+        xion_addr_display = self.xion_address.get(address, "N/A")
+        logger_info(f"Address: {xion_addr_display} [XION]")
+
+        # Safely access babylon_address, providing a default message if not found
+        babylon_addr_display = self.babylon_address.get(address, "N/A")
+        logger_info(f"Address: {babylon_addr_display} [BABYLON]")
         if option == 1:
             await self.process_option_1(private_key, address)
         elif option == 2:
