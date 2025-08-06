@@ -20,7 +20,7 @@ def display_banner():
         console.print(f"[yellow]Initializing{'.' * (_ % 4)}[/yellow]", justify="center", end="\r")
         time.sleep(0.3)
     console.print(" " * 50, end="\r")
-    console.print(f"[green]+ Union AUTO BIY - CREATED BY KAZUHA[/green]", justify="center")
+    console.print(f"[green]+ Union AUTO BIY - CREATED BY KAZUHA & UPDATED BY CryptoExplor[/green]", justify="center")
     console.print("-" * 50, style="green", justify="center")
 
 def logger_info(msg):
