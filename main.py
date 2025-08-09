@@ -1,40 +1,44 @@
 import asyncio
 from union import Union
 from ui import display_banner, logger_info, logger_success, logger_error
-from utils import load_accounts, generate_address, clear_terminal
+from utils import generate_address, clear_terminal # Removed load_accounts as it's handled in Union class
 
 async def main():
     try:
         bot = Union()
         display_banner()
         logger_info("Starting Union Auto Swap")
-        accounts = load_accounts()
-        if not accounts:
-            logger_error("No Accounts Loaded")
+        
+        # --- NEW: Select a single wallet ---
+        selected_account = bot.select_wallet()
+        if not selected_account:
+            logger_error("No wallet selected or configured. Exiting.")
             return
+        
+        private_key = selected_account["PRIVATE_KEY"]
+        xion_address = selected_account["XION_ADDRESS"]
+        babylon_address = selected_account["BABYLON_ADDRESS"]
+        # --- END NEW ---
+
         option = bot.print_question()
         clear_terminal()
         display_banner()
-        logger_info(f"Account's Total: {len(accounts)}")
+        
+        # Now processing only the selected account
+        logger_info(f"Processing Selected Account:")
         separator = "=" * 22
-        for idx, account in enumerate(accounts, start=1):
-            if account:
-                private_key = account["PrivateKey"]
-                xion_address = account["XionAddress"]
-                babylon_address = account["BabylonAddress"]
-                logger_info(f"{separator}[ {idx} Of {len(accounts)} ]{separator}")
-                if not private_key or not xion_address or not babylon_address:
-                    logger_error("Invalid Account Data")
-                    continue
-                address = generate_address(private_key)
-                if not address:
-                    logger_error("Invalid Private Key or Library Version Not Supported")
-                    continue
-                bot.xion_address[address] = xion_address
-                bot.babylon_address[address] = babylon_address
-                await bot.process_accounts(private_key, address, option)
+        logger_info(f"{separator}[ 1 Of 1 ]{separator}") # Only one account is processed at a time
+
+        address = generate_address(private_key)
+        if not address:
+            logger_error("Invalid Private Key or Library Version Not Supported for selected wallet.")
+            return
+        
+        # Pass the specific wallet details to process_accounts
+        await bot.process_accounts(private_key, address, xion_address, babylon_address, option)
+        
         logger_info("=" * 65)
-        logger_success("All Accounts Have Been Processed")
+        logger_success("Selected Account Has Been Processed")
     except Exception as e:
         logger_error(f"Error: {e}")
         raise e
@@ -44,3 +48,4 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logger_error("EXIT Union Testnet - BOT")
+

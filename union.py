@@ -2,7 +2,11 @@ import asyncio
 import json
 import time
 import random
+import os
+from dotenv import load_dotenv # Import load_dotenv
+
 from web3 import Web3
+from eth_account import Account
 from eth_utils import keccak
 from eth_abi.abi import encode
 from aiohttp import ClientSession, ClientTimeout
@@ -11,8 +15,11 @@ from utils import pad_hex, encode_hex_as_string, encode_string_as_bytes
 
 class Union:
     def __init__(self) -> None:
+        # Load environment variables from .env file
+        load_dotenv() 
+
         self.GRAPHQL_API = "https://graphql.union.build/v1/graphql"
-        self.SEPOLIA_RPC_URL = "https://sepolia.drpc.org/"
+        self.SEPOLIA_RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
         self.HOLESKY_RPC_URL = "https://ethereum-holesky-rpc.publicnode.com/"
         self.SEI_RPC_URL = "https://evm-rpc-testnet.sei-apis.com/"
         self.CORN_RPC_URL = "https://21000001.rpc.thirdweb.com/"
@@ -45,16 +52,40 @@ class Union:
                 "type": "function",
             },
         ]
-        self.xion_address = {}
-        self.babylon_address = {}
+
+        # --- UPDATED: Wallet Configurations loaded from .env ---
+        self.wallets = []
+        # Loop to load multiple wallets from environment variables
+        i = 1
+        while True:
+            private_key = os.getenv(f"PRIVATE_KEY_{i}")
+            xion_address = os.getenv(f"XION_ADDRESS_{i}")
+            babylon_address = os.getenv(f"BABYLON_ADDRESS_{i}")
+
+            if private_key and xion_address and babylon_address:
+                self.wallets.append({
+                    "PRIVATE_KEY": private_key,
+                    "XION_ADDRESS": xion_address,
+                    "BABYLON_ADDRESS": babylon_address
+                })
+                i += 1
+            else:
+                break # Stop if a wallet number is missing
+        
+        if not self.wallets:
+            logger_error("No wallets found in .env file. Please configure PRIVATE_KEY_1, XION_ADDRESS_1, etc.")
+            # Optionally exit or raise an error if wallets are mandatory
+            exit() 
+        # --- END UPDATED ---
+
         self.used_rpc = 0
         self.tx_count = 0
-        self.sepolia_amount = 0.0001
-        self.holesky_amount = 0.0001
-        self.sei_amount = 0.01
+        self.sepolia_amount = 0.00001
+        self.holesky_amount = 0.00001
+        self.sei_amount = 0.001
         self.corn_amount = 0.0000001
-        self.min_delay = 1
-        self.max_delay = 1
+        self.min_delay = 5
+        self.max_delay = 20
 
     async def get_web3_with_check(self, address: str, retries=3, timeout=60):
         request_kwargs = {"timeout": timeout}
@@ -79,7 +110,40 @@ class Union:
             logger_error(f"Failed to get balance: {str(e)}")
             return None
 
-    def generate_instruction_data(self, address: str, amount: int, pair: str):
+    # --- RESTORED: submit_tx_hash method ---
+    async def submit_tx_hash(self, tx_hash: str, retries=30):
+        data = json.dumps({"query":"query GetPacketHashBySubmissionTxHash($submission_tx_hash: String!) {\n  v2_transfers(args: {p_transaction_hash: $submission_tx_hash}) {\n    packet_hash\n  }\n}","variables":{"submission_tx_hash":f"{tx_hash}"},"operationName":"GetPacketHashBySubmissionTxHash"})
+        headers = {
+            "Accept": "application/graphql-response+json, application/json",
+            "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Origin": "https://app.union.build",
+            "Referer": "https://app.union.build/",
+            "Sec-Fetch-Dest": "empty",
+            "Sec-Fetch-Mode": "cors",
+            "Sec-Fetch-Site": "same-site",
+            "Content-Length": str(len(data)),
+            "Content-Type": "application/json"
+        }
+        await asyncio.sleep(3)
+        for attempt in range(retries):
+            try:
+                async with ClientSession(timeout=ClientTimeout(total=120)) as session:
+                    async with session.post(url=self.GRAPHQL_API, headers=headers, data=data) as response:
+                        response.raise_for_status()
+                        result = await response.json()
+                        packet = result.get("data", {}).get("v2_transfers", [])
+                        if packet == []:
+                            raise ValueError("Packet Hash Is Empty")
+                        return packet
+            except Exception as e:
+                if attempt < retries - 1:
+                    await asyncio.sleep(5)
+                    continue
+                logger_error(f"Submit Tx Hash Failed: {str(e)}")
+        return None
+    # --- END RESTORED ---
+
+    def generate_instruction_data(self, address: str, amount: int, pair: str, xion_address: str, babylon_address: str):
         try:
             if pair == "Sepolia Testnet to Holesky Testnet":
                 quote_token = "0x92b3bc0bc3ac0ee60b04a0bbc4a09deb3914c886"
@@ -138,7 +202,7 @@ class Union:
                     pad_hex(20) +
                     encode_hex_as_string(address) +
                     pad_hex(42) +
-                    encode_string_as_bytes(self.babylon_address[address], 64) +
+                    encode_string_as_bytes(babylon_address, 64) +
                     pad_hex(20) +
                     encode_hex_as_string(self.BASE_TOKEN_ADDRESS) +
                     pad_hex(3) +
@@ -206,7 +270,7 @@ class Union:
                     pad_hex(20) +
                     encode_hex_as_string(address) +
                     pad_hex(43) +
-                    encode_string_as_bytes(self.xion_address[address], 64) +
+                    encode_string_as_bytes(xion_address, 64) +
                     pad_hex(20) +
                     encode_hex_as_string(self.BASE_TOKEN_ADDRESS) +
                     pad_hex(3) +
@@ -240,7 +304,7 @@ class Union:
                     pad_hex(20) +
                     encode_hex_as_string(address) +
                     pad_hex(42) +
-                    encode_string_as_bytes(self.babylon_address[address], 64) +
+                    encode_string_as_bytes(babylon_address, 64) +
                     pad_hex(20) +
                     encode_hex_as_string(self.BASE_TOKEN_ADDRESS) +
                     pad_hex(3) +
@@ -274,7 +338,7 @@ class Union:
                     pad_hex(20) +
                     encode_hex_as_string(address) +
                     pad_hex(43) +
-                    encode_string_as_bytes(self.xion_address[address], 64) +
+                    encode_string_as_bytes(xion_address, 64) +
                     pad_hex(20) +
                     encode_hex_as_string(self.BASE_TOKEN_ADDRESS) +
                     pad_hex(3) +
@@ -368,16 +432,16 @@ class Union:
                     pad_hex(0) +
                     pad_hex(20) +
                     encode_hex_as_string(address) +
-                    pad_hex(20) +
-                    encode_hex_as_string(address) +
+                    pad_hex(42) +
+                    encode_string_as_bytes(babylon_address, 64) +
                     pad_hex(20) +
                     encode_hex_as_string(self.BASE_TOKEN_ADDRESS) +
                     pad_hex(3) +
                     encode_string_as_bytes("SEI", 32) +
                     pad_hex(3) +
                     encode_string_as_bytes("Sei", 32) +
-                    pad_hex(20) +
-                    encode_hex_as_string(quote_token)
+                    pad_hex(62) +
+                    encode_hex_as_string(quote_token, 64)
                 )
 
             elif pair == "Sei Testnet to Babylon Testnet":
@@ -404,7 +468,7 @@ class Union:
                     pad_hex(20) +
                     encode_hex_as_string(address) +
                     pad_hex(42) +
-                    encode_string_as_bytes(self.babylon_address[address], 64) +
+                    encode_string_as_bytes(babylon_address, 64) +
                     pad_hex(20) +
                     encode_hex_as_string(self.BASE_TOKEN_ADDRESS) +
                     pad_hex(3) +
@@ -430,7 +494,7 @@ class Union:
                     pad_hex(20) +
                     encode_hex_as_string(address) +
                     pad_hex(42) +
-                    encode_string_as_bytes(self.babylon_address[address], 64) +
+                    encode_string_as_bytes(babylon_address, 64) +
                     pad_hex(20) +
                     encode_hex_as_string(self.BASE_TOKEN_ADDRESS) +
                     pad_hex(3) +
@@ -464,7 +528,7 @@ class Union:
                     pad_hex(20) +
                     encode_hex_as_string(address) +
                     pad_hex(43) +
-                    encode_string_as_bytes(self.xion_address[address], 64) +
+                    encode_string_as_bytes(xion_address, 64) +
                     pad_hex(20) +
                     encode_hex_as_string(self.BASE_TOKEN_ADDRESS) +
                     pad_hex(4) +
@@ -532,7 +596,7 @@ class Union:
                     pad_hex(20) +
                     encode_hex_as_string(address) +
                     pad_hex(42) +
-                    encode_string_as_bytes(self.babylon_address[address], 64) +
+                    encode_string_as_bytes(babylon_address, 64) +
                     pad_hex(20) +
                     encode_hex_as_string(self.BASE_TOKEN_ADDRESS) +
                     pad_hex(4) +
@@ -552,24 +616,24 @@ class Union:
         except Exception as e:
             raise Exception(f"Generate Instruction Data Failed: {str(e)}")
 
-    async def perform_send(self, private_key: str, address: str, tx_amount: float, pair: str):
+    async def perform_send(self, private_key: str, address: str, tx_amount: float, pair: str, xion_address: str, babylon_address: str):
         try:
             web3 = await self.get_web3_with_check(address)
             if pair == "Sepolia Testnet to Holesky Testnet":
                 channel_id = 8
-                fee = 1.5
+                fee = 0.0001
             elif pair == "Sepolia Testnet to Babylon Testnet":
                 channel_id = 7
-                fee = 1.5
+                fee = 0.0001
             elif pair == "Holesky Testnet to Sepolia Testnet":
                 channel_id = 2
-                fee = 0.001
+                fee = 0.0001
             elif pair == "Holesky Testnet to Xion Testnet":
                 channel_id = 4
-                fee = 0.001
+                fee = 0.0001
             elif pair == "Holesky Testnet to Babylon Testnet":
                 channel_id = 3
-                fee = 0.001
+                fee = 0.0001
             elif pair == "Sei Testnet to Xion Testnet":
                 channel_id = 1
                 fee = 1.1
@@ -597,31 +661,52 @@ class Union:
             timestamp_now = int(time.time())
             encoded_data = keccak(encode(["address", "uint256"], [address, timestamp_now]))
             salt = "0x" + encoded_data.hex()
-            instruction = self.generate_instruction_data(address, amount, pair)
+            # Pass xion_address and babylon_address to generate_instruction_data
+            instruction = self.generate_instruction_data(address, amount, pair, xion_address, babylon_address)
             token_contract = web3.eth.contract(address=web3.to_checksum_address(self.UCS03_ROUTER_ADDRESS), abi=self.UCS03_CONTRACT_ABI)
             send_data = token_contract.functions.send(channel_id, timeout_height, timeout_timestamp, salt, instruction)
-            estimated_gas = send_data.estimate_gas({"from": address, "value": amount})
+
+            # Get latest block to calculate baseFeePerGas
             latest_block = web3.eth.get_block("latest")
             base_fee = latest_block.get("baseFeePerGas", 0)
+            
+            # Calculate maxPriorityFeePerGas and maxFeePerGas
             max_priority_fee = web3.to_wei(fee, "gwei")
+            # Ensure max_fee is at least base_fee + max_priority_fee
             max_fee = base_fee + max_priority_fee
+
+            # Estimate gas before building transaction
+            estimated_gas = send_data.estimate_gas({"from": address, "value": amount})
+            
             send_tx = send_data.build_transaction({
                 "from": address,
                 "value": amount,
-                "gas": int(estimated_gas * 1.2),
+                "gas": int(estimated_gas * 1.2), # Add a buffer to estimated gas
                 "maxFeePerGas": int(max_fee),
                 "maxPriorityFeePerGas": int(max_priority_fee),
                 "nonce": web3.eth.get_transaction_count(address, "pending"),
                 "chainId": web3.eth.chain_id,
             })
-            signed_tx = web3.eth.account.sign_transaction(send_tx, private_key)
-            raw_tx = web3.eth.send_raw_transaction(signed_tx.rawTransaction)  # Updated to rawTransaction
-            tx_hash = web3.to_hex(raw_tx)
-            receipt = await asyncio.to_thread(web3.eth.wait_for_transaction_receipt, tx_hash, timeout=600)
+            
+            # Correct way to sign and send the transaction
+            signed_tx = Account.sign_transaction(send_tx, private_key)
+            raw_tx_bytes = signed_tx.raw_transaction
+            
+            logger_info(f"Sending raw transaction...")
+            tx_hash_bytes = web3.eth.send_raw_transaction(raw_tx_bytes)
+            tx_hash_hex = web3.to_hex(tx_hash_bytes)
+            logger_success(f"Transaction sent with hash: {tx_hash_hex}")
+            
+            logger_info(f"Waiting for transaction receipt for {tx_hash_hex}...")
+            receipt = await asyncio.to_thread(web3.eth.wait_for_transaction_receipt, tx_hash_hex, timeout=600)
+            logger_success(f"Transaction confirmed in block {receipt.blockNumber}")
+            
             block_number = receipt.blockNumber
-            return tx_hash, block_number
+            return tx_hash_hex, block_number
         except Exception as e:
             logger_error(f"Perform Send Failed: {str(e)}")
+            import traceback
+            logger_error(f"Detailed error: {traceback.format_exc()}")
             return None, None
 
     async def print_timer(self):
@@ -687,39 +772,26 @@ class Union:
         self.print_tx_count_question()
         return option
 
-    async def submit_tx_hash(self, tx_hash: str, retries=30):
-        data = json.dumps({"query":"query GetPacketHashBySubmissionTxHash($submission_tx_hash: String!) {\n  v2_transfers(args: {p_transaction_hash: $submission_tx_hash}) {\n    packet_hash\n  }\n}","variables":{"submission_tx_hash":f"{tx_hash}"},"operationName":"GetPacketHashBySubmissionTxHash"})
-        headers = {
-            "Accept": "application/graphql-response+json, application/json",
-            "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
-            "Origin": "https://app.union.build",
-            "Referer": "https://app.union.build/",
-            "Sec-Fetch-Dest": "empty",
-            "Sec-Fetch-Mode": "cors",
-            "Sec-Fetch-Site": "same-site",
-            "Content-Length": str(len(data)),
-            "Content-Type": "application/json"
-        }
-        await asyncio.sleep(3)
-        for attempt in range(retries):
+    def select_wallet(self):
+        while True:
             try:
-                async with ClientSession(timeout=ClientTimeout(total=120)) as session:
-                    async with session.post(url=self.GRAPHQL_API, headers=headers, data=data) as response:
-                        response.raise_for_status()
-                        result = await response.json()
-                        packet = result.get("data", {}).get("v2_transfers", [])
-                        if packet == []:
-                            raise ValueError("Packet Hash Is Empty")
-                        return packet
-            except Exception as e:
-                if attempt < retries - 1:
-                    await asyncio.sleep(5)
-                    continue
-                logger_error(f"Submit Tx Hash Failed: {str(e)}")
-        return None
+                if not self.wallets:
+                    logger_error("No wallets configured. Please add wallet details to your .env file.")
+                    return None # Or raise an exception to stop execution
+                
+                logger_info(f"\nAvailable Wallets: 1 to {len(self.wallets)}")
+                wallet_num = int(input("Enter the wallet number you want to use: ").strip())
+                if 1 <= wallet_num <= len(self.wallets):
+                    selected_wallet = self.wallets[wallet_num - 1] # Adjust for 0-based indexing
+                    logger_success(f"Wallet {wallet_num} selected.")
+                    return selected_wallet
+                else:
+                    logger_error(f"Please enter a number between 1 and {len(self.wallets)}.")
+            except ValueError:
+                logger_error("Invalid input. Please enter a number.")
 
-    async def process_perform_send(self, private_key: str, address: str, tx_amount: float, pair: str):
-        tx_hash, block_number = await self.perform_send(private_key, address, tx_amount, pair)
+    async def process_perform_send(self, private_key: str, address: str, tx_amount: float, pair: str, xion_address: str, babylon_address: str):
+        tx_hash, block_number = await self.perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
         if tx_hash and block_number:
             if pair in ["Sepolia Testnet to Holesky Testnet", "Sepolia Testnet to Babylon Testnet"]:
                 explorer = f"https://sepolia.etherscan.io/tx/{tx_hash}"
@@ -745,7 +817,7 @@ class Union:
         else:
             logger_error("Perform On-Chain Failed")
 
-    async def process_option_1(self, private_key: str, address: str):
+    async def process_option_1(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Sepolia Testnet to Holesky Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -760,10 +832,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_2(self, private_key: str, address: str):
+    async def process_option_2(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Sepolia Testnet to Babylon Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -778,10 +850,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_3(self, private_key: str, address: str):
+    async def process_option_3(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Holesky Testnet to Sepolia Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -796,10 +868,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_4(self, private_key: str, address: str):
+    async def process_option_4(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Holesky Testnet to Xion Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -814,10 +886,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_5(self, private_key: str, address: str):
+    async def process_option_5(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Holesky Testnet to Babylon Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -832,10 +904,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_6(self, private_key: str, address: str):
+    async def process_option_6(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Sei Testnet to Xion Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -850,10 +922,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_7(self, private_key: str, address: str):
+    async def process_option_7(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Sei Testnet to Bitcorn Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -868,10 +940,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_8(self, private_key: str, address: str):
+    async def process_option_8(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Sei Testnet to Binance Smart Chain Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -886,10 +958,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_9(self, private_key: str, address: str):
+    async def process_option_9(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Sei Testnet to Babylon Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -904,10 +976,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_10(self, private_key: str, address: str):
+    async def process_option_10(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Bitcorn Testnet to Xion Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -922,10 +994,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_11(self, private_key: str, address: str):
+    async def process_option_11(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Bitcorn Testnet to Sei Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -940,10 +1012,10 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_12(self, private_key: str, address: str):
+    async def process_option_12(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Bitcorn Testnet to Babylon Testnet")
         for i in range(self.tx_count):
             logger_info(f"Transaction {i+1} of {self.tx_count}")
@@ -958,51 +1030,52 @@ class Union:
             if not balance or balance <= tx_amount:
                 logger_warn(f"Insufficient {ticker} Token Balance")
                 return
-            await self.process_perform_send(private_key, address, tx_amount, pair)
+            await self.process_perform_send(private_key, address, tx_amount, pair, xion_address, babylon_address)
             await self.print_timer()
 
-    async def process_option_13(self, private_key: str, address: str):
+    async def process_option_13(self, private_key: str, address: str, xion_address: str, babylon_address: str):
         logger_step("Option: Run All Pairs")
-        await self.process_option_1(private_key, address)
-        await self.process_option_2(private_key, address)
-        await self.process_option_3(private_key, address)
-        await self.process_option_4(private_key, address)
-        await self.process_option_5(private_key, address)
-        await self.process_option_6(private_key, address)
-        await self.process_option_7(private_key, address)
-        await self.process_option_8(private_key, address)
-        await self.process_option_9(private_key, address)
-        await self.process_option_10(private_key, address)
-        await self.process_option_11(private_key, address)
-        await self.process_option_12(private_key, address)
+        await self.process_option_1(private_key, address, xion_address, babylon_address)
+        await self.process_option_2(private_key, address, xion_address, babylon_address)
+        await self.process_option_3(private_key, address, xion_address, babylon_address)
+        await self.process_option_4(private_key, address, xion_address, babylon_address)
+        await self.process_option_5(private_key, address, xion_address, babylon_address)
+        await self.process_option_6(private_key, address, xion_address, babylon_address)
+        await self.process_option_7(private_key, address, xion_address, babylon_address)
+        await self.process_option_8(private_key, address, xion_address, babylon_address)
+        await self.process_option_9(private_key, address, xion_address, babylon_address)
+        await self.process_option_10(private_key, address, xion_address, babylon_address)
+        await self.process_option_11(private_key, address, xion_address, babylon_address)
+        await self.process_option_12(private_key, address, xion_address, babylon_address)
 
-    async def process_accounts(self, private_key: str, address: str, option: int):
+    async def process_accounts(self, private_key: str, address: str, xion_address: str, babylon_address: str, option: int):
         logger_info(f"Address: {address} [EVM]")
-        logger_info(f"Address: {self.xion_address[address]} [XION]")
-        logger_info(f"Address: {self.babylon_address[address]} [BABYLON]")
+        logger_info(f"Address: {xion_address} [XION]")
+        logger_info(f"Address: {babylon_address} [BABYLON]")
+        
         if option == 1:
-            await self.process_option_1(private_key, address)
+            await self.process_option_1(private_key, address, xion_address, babylon_address)
         elif option == 2:
-            await self.process_option_2(private_key, address)
+            await self.process_option_2(private_key, address, xion_address, babylon_address)
         elif option == 3:
-            await self.process_option_3(private_key, address)
+            await self.process_option_3(private_key, address, xion_address, babylon_address)
         elif option == 4:
-            await self.process_option_4(private_key, address)
+            await self.process_option_4(private_key, address, xion_address, babylon_address)
         elif option == 5:
-            await self.process_option_5(private_key, address)
+            await self.process_option_5(private_key, address, xion_address, babylon_address)
         elif option == 6:
-            await self.process_option_6(private_key, address)
+            await self.process_option_6(private_key, address, xion_address, babylon_address)
         elif option == 7:
-            await self.process_option_7(private_key, address)
+            await self.process_option_7(private_key, address, xion_address, babylon_address)
         elif option == 8:
-            await self.process_option_8(private_key, address)
+            await self.process_option_8(private_key, address, xion_address, babylon_address)
         elif option == 9:
-            await self.process_option_9(private_key, address)
+            await self.process_option_9(private_key, address, xion_address, babylon_address)
         elif option == 10:
-            await self.process_option_10(private_key, address)
+            await self.process_option_10(private_key, address, xion_address, babylon_address)
         elif option == 11:
-            await self.process_option_11(private_key, address)
+            await self.process_option_11(private_key, address, xion_address, babylon_address)
         elif option == 12:
-            await self.process_option_12(private_key, address)
+            await self.process_option_12(private_key, address, xion_address, babylon_address)
         elif option == 13:
-            await self.process_option_13(private_key, address)
+            await self.process_option_13(private_key, address, xion_address, babylon_address)
